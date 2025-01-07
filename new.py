@@ -6,7 +6,6 @@ import random
 import sys 
 import time
 abc=0
-birdie= False
 TARGET_FPS=120
 FRAME_TIME= 1/TARGET_FPS
 last_time = time.time()
@@ -16,7 +15,7 @@ poweruptimer=0
 # Screen dimensions
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-GAME_STATE="Main Menu"
+
 birds = []  # List to store birds
 BIRD_SPEED_RANGE = (2, 5)
 BIRD_SIZE_RANGE = (10, 30)
@@ -41,6 +40,20 @@ jet1_health = 100
 jet2_health = 100
 abc=0
 cloudarr=[]
+
+# Respawn
+jet1_respawn_time = None
+jet2_respawn_time = None
+RESPAWN_DELAY = 3  # Seconds
+
+round_timer = 30  # Time limit for each round (seconds)
+current_round = 1
+max_rounds = 3
+round_start_time = time.time()
+jet1_wins = 0
+jet2_wins = 0
+jet1_round_destroys = 0
+jet2_round_destroys = 0 
 
 # Projectile class
 class Projectile:
@@ -209,16 +222,6 @@ birds = [
 fire_active = False
 fire_x = 0
 fire_y = 0
-def draw_filled_rectangle(x_min, y_min, x_max, y_max):
-    """Draw a filled rectangle by filling it with horizontal lines."""
-    for y in range(y_min, y_max + 1):
-        draw_line(x_min, y, x_max, y)
-
-def draw_text(x, y, text, font=GLUT_BITMAP_HELVETICA_18):
-    glRasterPos2f(x, y)
-    for char in text:
-        glutBitmapCharacter(font, ord(char))
-
 def spawn_bird():
     size = random.randint(*BIRD_SIZE_RANGE)
     speed = random.uniform(*BIRD_SPEED_RANGE)
@@ -307,15 +310,7 @@ def draw_circle1(x, y, radius, screen_width=SCREEN_WIDTH, screen_height=SCREEN_H
 
     return points
 
-def draw_rectengle(x1, y1, x2, y2):
-    glBegin(GL_POINTS)
-    for x in range(x1, x2 + 1):
-        glVertex2f(x, y1)
-        glVertex2f(x, y2)
-    for y in range(y1, y2 + 1):
-        glVertex2f(x1, y)
-        glVertex2f(x2, y)
-    glEnd()
+
 
 def draw_line(x1, y1, x2, y2, width=1):
     """
@@ -464,24 +459,60 @@ def draw_jet(x, y, color, direction=1):
     draw_line(x + (10 * direction), y + 5, x, y + 15)  # Top Wing (Middle Part)
     draw_line(x + (10 * direction), y - 5, x, y - 15)  # Bottom Wing (Middle Part)
 
-def mouse_click(button, state, x, y):
-    global GAME_STATE
-    y=SCREEN_HEIGHT-y
-    if state == GLUT_DOWN:  # Mouse button pressed
-        if button == GLUT_LEFT_BUTTON:
-            if x>250 and x<550 and y>250 and y<350:
-                GAME_STATE="Main Game"
-                
-            print(x,y)
-            print(f"Left button clicked at ({x}, {y})")
-        elif button == GLUT_RIGHT_BUTTON:
-            print(f"Right button clicked at ({x}, {y})")
-        elif button == GLUT_MIDDLE_BUTTON:
-            print(f"Middle button clicked at ({x}, {y})")
+
 def update_positions():
     # """Update jet positions and check for collisions."""
-    global jet1_x, jet1_y, jet2_x, jet2_y, jet1_active, jet2_active, jet1_health, jet2_health, last_time, poweruptimer, powerup, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED
+    global jet1_x, jet1_y, jet2_x, jet2_y, jet1_active, jet2_active, jet1_health, jet2_health, last_time, poweruptimer, powerup, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED, jet1_respawn_time, jet2_respawn_time, current_round, round_start_time, jet1_wins, jet2_wins, jet1_round_destroys, jet2_round_destroys  
     current_time = time.time()
+
+    # Handle round timer
+    if current_time - round_start_time >= round_timer or (jet1_round_destroys >= 2 or jet2_round_destroys >= 2):
+        # Determine round winner
+        if jet1_round_destroys > jet2_round_destroys:
+            jet1_wins += 1
+        elif jet2_round_destroys > jet1_round_destroys:
+            jet2_wins += 1
+
+        # Check for game over
+        if current_round == max_rounds:
+            if jet1_wins > jet2_wins:
+                display_game_over("Jet 1", jet1_wins, jet2_wins)
+            elif jet2_wins > jet1_wins:
+                display_game_over("Jet 2", jet1_wins, jet2_wins)
+            else:
+                display_game_over("DRAW", jet1_wins, jet2_wins)
+            glutLeaveMainLoop()
+            return
+
+        # Reset for next round
+        current_round += 1
+        jet1_x, jet1_y = 200, 300
+        jet2_x, jet2_y = 600, 300
+        jet1_health = jet2_health = 100
+        jet1_active = jet2_active = True
+        jet1_round_destroys = jet2_round_destroys = 0
+        round_start_time = current_time
+
+    # Check for Jet1 respawn
+    if not jet1_active and jet1_respawn_time is None:
+        jet1_respawn_time = current_time + RESPAWN_DELAY
+        jet2_round_destroys += 1  # Jet2 destroyed Jet1
+    elif jet1_respawn_time and current_time >= jet1_respawn_time:
+        jet1_active = True
+        jet1_health = 100
+        jet1_x, jet1_y = 200, 300  # Default respawn position for Jet1
+        jet1_respawn_time = None
+
+    # Check for Jet2 respawn
+    if not jet2_active and jet2_respawn_time is None:
+        jet2_respawn_time = current_time + RESPAWN_DELAY
+        jet1_round_destroys += 1  # Jet1 destroyed Jet2
+    elif jet2_respawn_time and current_time >= jet2_respawn_time:
+        jet2_active = True
+        jet2_health = 100
+        jet2_x, jet2_y = 600, 300  # Default respawn position for Jet2
+        jet2_respawn_time = None
+
     # Update positions of active jets
     if jet1_active:
         if keys.get(b'w') and jet1_y + JET1_SPEED <= SCREEN_HEIGHT:
@@ -494,13 +525,13 @@ def update_positions():
             jet1_x += JET1_SPEED
 
     if jet2_active:
-        if keys.get(b'i') and jet2_y + JET2_SPEED <= SCREEN_HEIGHT:
+        if keys.get(b'8') and jet2_y + JET2_SPEED <= SCREEN_HEIGHT:
             jet2_y += JET2_SPEED
-        if keys.get(b'k') and jet2_y - JET2_SPEED >= 0:
+        if keys.get(b'5') and jet2_y - JET2_SPEED >= 0:
             jet2_y -= JET2_SPEED
-        if keys.get(b'j') and jet2_x - JET2_SPEED >= 0:
+        if keys.get(b'4') and jet2_x - JET2_SPEED >= 0:
             jet2_x -= JET2_SPEED
-        if keys.get(b'l') and jet2_x + JET2_SPEED <= SCREEN_WIDTH:
+        if keys.get(b'6') and jet2_x + JET2_SPEED <= SCREEN_WIDTH:
             jet2_x += JET2_SPEED
 
     # Move projectiles and check collisions
@@ -522,27 +553,19 @@ def update_positions():
         bird.update()
         if bird.check_collision(jet1_x, jet1_y):
             bird.active = False
-            jet1_health -= 50
-            if jet1_health <= 0:
-                jet1_active = False
-
+            jet1_active = False
             fire_active = True
             fire_x, fire_y = jet1_x, jet1_y
         elif bird.check_collision(jet2_x, jet2_y):
             bird.active = False
-            jet2_health -= 50
-            if jet2_health <= 0:
-                jet2_active = False
+            jet2_active = False
             fire_active = True
             fire_x, fire_y = jet2_x, jet2_y
-        for i in projectiles:
-            if i.check_collision(bird.x, bird.y):
-                bird.active=False
         if not bird.active:
             birds.remove(bird)
 
     # Randomly spawn birds
-    if random.random() < 0.01:  # Adjust spawn probability
+    if random.random() < 0.001:  # Adjust spawn probability
         spawn_bird()
     if len(powerup)==0:
         val= random.choice(["health","speed","projectile"])
@@ -565,14 +588,9 @@ def update_positions():
         for i in powerup:
             if i.type=="health":
                 if i.check_collision(jet1_x, jet1_y):
-                    
-                    jet1_health+=25
-                    if jet1_health>100:
-                        jet1_health=100
+                    jet1_health+=30
                 if i.check_collision(jet2_x, jet2_y):
-                    jet2_health+=25
-                    if jet2_health>100:
-                        jet2_health=100
+                    jet2_health+=30
             if i.type=="speed":
                 if i.check_collision(jet1_x, jet1_y):
                     JET1_SPEED+=5
@@ -586,6 +604,25 @@ def update_positions():
             
         # print(jet1_health,jet2_health)
     glutPostRedisplay()
+
+def display_game_over(result, jet1_wins, jet2_wins):
+    glClear(GL_COLOR_BUFFER_BIT)
+    glLoadIdentity()
+
+    message1 = "Game Over!"
+    if result == "DRAW":
+        message2 = "The game is a DRAW!"
+    else:
+        message2 = f"The winner is {result}!"
+    message3 = f"Jet 1 Wins: {jet1_wins}, Jet 2 Wins: {jet2_wins}"
+
+    glColor3f(1, 1, 1)
+    draw_text(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 20, message1)
+    draw_text(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, message2)
+    draw_text(SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 20, message3)
+
+    glutSwapBuffers()
+
 def process_points(data, precision=1):
     processed_data = []
     for sublist in data:
@@ -600,9 +637,16 @@ def render_birds():
 def render_fire():
     if fire_active:
         draw_fire(fire_x, fire_y)
+
+# Helper function to draw text
+def draw_text(x, y, text, font=GLUT_BITMAP_HELVETICA_12):
+    glRasterPos2f(x, y)
+    for char in text:
+        glutBitmapCharacter(font, ord(char))     
+
 def display():
     # """Render the sky, clouds, and jets."""
-    global last_time, abc, cloudarr, jet1_active, jet2_active, jet1_x, jet1_y, jet2_x, jet2_y, projectiles, birds, fire_active, fire_x, fire_y, birdie, SCREEN_WIDTH, SCREEN_HEIGHT, GAME_STATE
+    global last_time, abc, cloudarr, jet1_active, jet2_active, jet1_x, jet1_y, jet2_x, jet2_y, projectiles, birds, fire_active, fire_x, fire_y, current_round, jet1_wins, jet2_wins, jet1_round_destroys, jet2_round_destroys
     current_time=time.time()
     elapsed_time=current_time-last_time
     last_time=current_time
@@ -630,101 +674,55 @@ def display():
         
         glClear(GL_COLOR_BUFFER_BIT)
         glLoadIdentity()
+
+        # Display round and score information
+        glColor3f(1, 1, 1)  # White text
+        draw_text(10, SCREEN_HEIGHT - 20, f"Round: {current_round}/{max_rounds}")
+        draw_text(10, SCREEN_HEIGHT - 40, f"Jet 1 Wins: {jet1_wins} | Jet 2 Wins: {jet2_wins}")
+        draw_text(10, SCREEN_HEIGHT - 60, f"Jet 1 Destroys: {jet1_round_destroys} | Jet 2 Destroys: {jet2_round_destroys}")
+
+
         
         # Draw Sky Background
-        glClearColor(0.5, 0.8, 1.0, 1.0)
-        if GAME_STATE=="Main Menu":
-            birdie=True
-            deff=0   
-            for i in cloudarr:
-                    if deff==0:
-                        
-                        glBegin(GL_POINTS)
-                        glColor3f(0.9, 0.9, 1.0)
-                        for j in i:
-                            glVertex2f(j[0],j[1])
-                        deff+=1
-                        glEnd() 
-                        
-                    else:
-                        glBegin(GL_POINTS)
-                        glColor3f(1.0, 1.0, 1.0)
-                        for j in i:
-                            glVertex2f(j[0],j[1])
-                        if deff==2:
-                            deff=0
-                        else:
-                            deff+=1
-                        glEnd()
-            glColor3f(1.0, 0.6, 0.5)
-            draw_filled_rectangle(250, 250, 550, 350)
-            glColor3f(1.0, 1.0, 1.0)
-            draw_text(SCREEN_WIDTH // 2 -70 , SCREEN_HEIGHT // 2- 10, "Let's FLY!!!!!", font=GLUT_BITMAP_TIMES_ROMAN_24)
-        elif GAME_STATE=="Main Game":    
-            deff=0   
-            for i in cloudarr:
-                    if deff==0:
-                        
-                        glBegin(GL_POINTS)
-                        glColor3f(0.9, 0.9, 1.0)
-                        for j in i:
-                            glVertex2f(j[0],j[1])
-                        deff+=1
-                        glEnd() 
-                        
-                    else:
-                        glBegin(GL_POINTS)
-                        glColor3f(1.0, 1.0, 1.0)
-                        for j in i:
-                            glVertex2f(j[0],j[1])
-                        if deff==2:
-                            deff=0
-                        else:
-                            deff+=1
-                        glEnd() 
-            if birdie:
-                birds=[]
-                birdie=False
-            
-            # Draw Jets if active
-            if jet1_active:
-                draw_jet(jet1_x, jet1_y, (1, 0, 0), direction=1)  # Player 1 Jet
-            if jet2_active:
-                draw_jet(jet2_x, jet2_y, (0, 0, 1), direction=-1)  # Player 2 Jet
-
-            # Draw the outer unfilled rectangle
-            val1=jet1_health
-            val2=jet2_health
-            val1= (val1/100)*200
-            val2= (val2/100)*200
-            if val1<0:
-                val1=0
-            if val2<0:
-                val2=0
-            glColor3f(0,0.8,0)
-            draw_rectengle(50, 550, 250, 580)
-            draw_rectengle(550, 550, 750, 580)
-            glColor3f(0,1,0)
-            draw_filled_rectangle(55, 555, 45+val1, 575)
-
-
-
-            draw_filled_rectangle(555, 555, 545+val2, 575)
-
-           
-
-            # Draw the inner filled rectangle
-            
-
-            # Draw Projectiles
-            for projectile in projectiles:
-                projectile.draw()
-            for i in powerup:
-                i.draw()
+        glClearColor(0.5, 0.8, 1.0, 1.0)  # Light Blue Sky
         
-        for bird in birds:
-                bird.draw()
+        deff=0
+        for i in cloudarr:
+            if deff==0:
                 
+                glBegin(GL_POINTS)
+                glColor3f(0.9, 0.9, 1.0)
+                for j in i:
+                    glVertex2f(j[0],j[1])
+                deff+=1
+                glEnd() 
+                
+            else:
+                glBegin(GL_POINTS)
+                glColor3f(1.0, 1.0, 1.0)
+                for j in i:
+                    glVertex2f(j[0],j[1])
+                if deff==2:
+                    deff=0
+                else:
+                    deff+=1
+                glEnd() 
+            
+        # Draw Jets if active
+        if jet1_active:
+            draw_jet(jet1_x, jet1_y, (1, 0, 0), direction=1)  # Player 1 Jet
+        if jet2_active:
+            draw_jet(jet2_x, jet2_y, (0, 0, 1), direction=-1)  # Player 2 Jet
+
+
+        # Draw Projectiles
+        for projectile in projectiles:
+            projectile.draw()
+        for i in powerup:
+            i.draw()
+        for bird in birds:
+            bird.draw()
+        
         glutSwapBuffers()
 # def key_pressed(key, x, y):
 #     global jet1_active, jet2_active, last_time
@@ -782,7 +780,6 @@ def main():
         glutIdleFunc(update_positions)
         glutKeyboardFunc(key_pressed)
         glutKeyboardUpFunc(key_released)
-        glutMouseFunc(mouse_click)
     
         glutMainLoop()
 
