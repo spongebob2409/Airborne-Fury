@@ -25,15 +25,22 @@ BIRD_SIZE_RANGE = (10, 30)
 # Jet positions
 jet1_x, jet1_y = 200, 300
 jet2_x, jet2_y = 600, 300
-
+defaultspd=10
+defaultprojspd=30
 # Movement speed
-JET1_SPEED = 10
-PROJECTILE1_SPEED = 30  # Speed for projectiles
-JET2_SPEED = 10
-PROJECTILE2_SPEED = 30  # Speed for projectiles
+JET1_SPEED = defaultspd
+PROJECTILE1_SPEED = defaultprojspd  # Speed for projectiles
+JET2_SPEED = defaultspd
+PROJECTILE2_SPEED = defaultprojspd # Speed for projectiles
 
 # Key states
 keys = {}
+
+# Add to global variables
+jet1_color = (1, 1, 0)  # Default yellow color for jet1
+jet2_color = (1, 1, 0)  # Default blue color for jet2
+jet1_color_timer = 0
+jet2_color_timer = 0
 
 # Jet states (active or destroyed)
 jet1_active = True
@@ -74,6 +81,7 @@ class Projectile:
     def check_collision(self, jet_x, jet_y):
         # """Check if the projectile hits a jet."""
         if self.active and abs(self.x - jet_x) < 20 and abs(self.y - jet_y) < 20:
+            print(f"Collision detected at ({self.x}, {self.y}) with jet at ({jet_x}, {jet_y})")
             self.active = False
             return True
         return False
@@ -506,7 +514,7 @@ def draw_jet(x, y, color, direction=1):
     # Draw a jet with body and triangular nose.
     # direction: 1 for right-facing, -1 for left-facing
     # """
-    glColor3f(1, 1, 0)  # Yellow Jet Body
+    glColor3f(*color)  # Yellow Jet Body
     draw_line(x, y, x + (20 * direction), y)  # Body Line
 
     glColor3f(1, 0, 0)  # Red Jet Nose (Triangle)
@@ -516,9 +524,10 @@ def draw_jet(x, y, color, direction=1):
     glVertex2f(x + (35 * direction), y)      # Front point of the nose
     glEnd()
 
-    glColor3f(1, 1, 0)  # Yellow for the wings
+    glColor3f(*color)  # Yellow for the wings
     draw_line(x + (10 * direction), y + 5, x, y + 15)  # Top Wing (Middle Part)
     draw_line(x + (10 * direction), y - 5, x, y - 15)  # Bottom Wing (Middle Part)
+
 
 def mouse_click(button, state, x, y):
     global GAME_STATE, jet1_active, jet2_active, jet1_health, jet2_health, jet1_x, jet1_y, jet2_x, jet2_y, projectiles, birds, fire_active, fire_x, fire_y, winner, powerup, poweruptimer, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED
@@ -558,124 +567,158 @@ def mouse_click(button, state, x, y):
             print(f"Middle button clicked at ({x}, {y})")
 def update_positions():
     # """Update jet positions and check for collisions."""
-    global jet1_x, jet1_y, jet2_x, jet2_y, jet1_active, jet2_active, jet1_health, jet2_health, last_time, poweruptimer, powerup, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED, GAME_STATE, winner
+    global jet1_x, jet1_y, jet2_x, jet2_y, jet1_active, jet2_active, jet1_health, jet2_health, last_time, poweruptimer, powerup, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED, GAME_STATE, winner, jet1_color, jet2_color, jet1_color_timer, jet2_color_timer, defaultspd, defaultprojspd
     current_time = time.time()
+    if GAME_STATE!="Pause":
     # Update positions of active jets
-    if jet1_active:
-        if keys.get(b'w') and jet1_y + JET1_SPEED <= SCREEN_HEIGHT:
-            jet1_y += JET1_SPEED
-        if keys.get(b's') and jet1_y - JET1_SPEED >= 0:
-            jet1_y -= JET1_SPEED
-        if keys.get(b'a') and jet1_x - JET1_SPEED >= 0:
-            jet1_x -= JET1_SPEED
-        if keys.get(b'd') and jet1_x + JET1_SPEED <= SCREEN_WIDTH:
-            jet1_x += JET1_SPEED
+        if jet1_active:
+            if keys.get(b'w') and jet1_y + JET1_SPEED <= SCREEN_HEIGHT:
+                jet1_y += JET1_SPEED
+            if keys.get(b's') and jet1_y - JET1_SPEED >= 0:
+                jet1_y -= JET1_SPEED
+            if keys.get(b'a') and jet1_x - JET1_SPEED >= 0:
+                jet1_x -= JET1_SPEED
+            if keys.get(b'd') and jet1_x + JET1_SPEED <= SCREEN_WIDTH:
+                jet1_x += JET1_SPEED
 
-    if jet2_active:
-        if keys.get(b'i') and jet2_y + JET2_SPEED <= SCREEN_HEIGHT:
-            jet2_y += JET2_SPEED
-        if keys.get(b'k') and jet2_y - JET2_SPEED >= 0:
-            jet2_y -= JET2_SPEED
-        if keys.get(b'j') and jet2_x - JET2_SPEED >= 0:
-            jet2_x -= JET2_SPEED
-        if keys.get(b'l') and jet2_x + JET2_SPEED <= SCREEN_WIDTH:
-            jet2_x += JET2_SPEED
+        if jet2_active:
+            if keys.get(b'8') and jet2_y + JET2_SPEED <= SCREEN_HEIGHT:
+                jet2_y += JET2_SPEED
+            if keys.get(b'5') and jet2_y - JET2_SPEED >= 0:
+                jet2_y -= JET2_SPEED
+            if keys.get(b'4') and jet2_x - JET2_SPEED >= 0:
+                jet2_x -= JET2_SPEED
+            if keys.get(b'6') and jet2_x + JET2_SPEED <= SCREEN_WIDTH:
+                jet2_x += JET2_SPEED
 
-    # Move projectiles and check collisions
-    for projectile in projectiles[:]:
-        projectile.move()
-        if jet1_active and projectile.check_collision(jet1_x, jet1_y):
-            jet1_health -= 30
-            explosions.append(Explosion(jet1_x, jet1_y))
-            if jet1_health <= 0:
-                jet1_active = False
-            # jet1_active = False
-        if jet2_active and projectile.check_collision(jet2_x, jet2_y):
-            jet2_health -= 30
-            if jet2_health <= 0:
-                jet2_active = False
-            explosions.append(Explosion(jet2_x, jet2_y))
-        if not projectile.active:
-            projectiles.remove(projectile)
-    
-    for bird in birds[:]:
-        bird.update()
-        if bird.check_collision(jet1_x, jet1_y):
-            bird.active = False
-            jet1_health -= 50
-            if jet1_health <= 0:
-                jet1_active = False
-            explosions.append(Explosion(bird.x, bird.y))
-
-            fire_active = True
-            fire_x, fire_y = jet1_x, jet1_y
-        elif bird.check_collision(jet2_x, jet2_y):
-            bird.active = False
-            jet2_health -= 50
-            if jet2_health <= 0:
-                jet2_active = False
-            explosions.append(Explosion(bird.x, bird.y))
-            fire_active = True
-            fire_x, fire_y = jet2_x, jet2_y
-        for i in projectiles:
-            if i.check_collision(bird.x, bird.y):
-                bird.active=False
-                explosions.append(Explosion(bird.x, bird.y))    
+        # Move projectiles and check collisions
+        for projectile in projectiles[:]:
+            projectile.move()
+            if jet1_active and projectile.check_collision(jet1_x, jet1_y):
+                jet1_health -= 30
+                explosions.append(Explosion(jet1_x, jet1_y))
+                if jet1_health <= 0:
+                    jet1_active = False
+                # jet1_active = False
+            if jet2_active and projectile.check_collision(jet2_x, jet2_y):
+                jet2_health -= 30
+                if jet2_health <= 0:
+                    jet2_active = False
+                explosions.append(Explosion(jet2_x, jet2_y))
+            if not projectile.active:
+                projectiles.remove(projectile)
         
-        if not bird.active:
-            birds.remove(bird)
-    if jet1_active==False or jet2_active==False:
-        if jet1_active==False:
-            winner="Player 2"
-        else:
-            winner="Player 1"
-        GAME_STATE="Game Over"
-    # Randomly spawn birds
-    if random.random() < 0.01:  # Adjust spawn probability
-        spawn_bird()
-    if len(powerup)==0:
-        val= random.choice(["health","speed","projectile"])
-        color=(1,0,0)
-        if val=="health":
-            color=(0,1,0)
-        if val=="speed":
-            color=(0,0,1)
-        if val=="projectile":
-            color=(1,0,1)
-        powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),color, val))
-        # powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),(1,0,0)))
-        # powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),(1,0,0)))
-    if current_time-poweruptimer>10:
-        # powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),(1,0,0)))
-        powerup=[]
-        poweruptimer=current_time
-    if len(powerup)!=0:
+        for bird in birds[:]:
+            bird.update()
+            if bird.check_collision(jet1_x, jet1_y):
+                bird.active = False
+                jet1_health -= 50
+                if jet1_health <= 0:
+                    jet1_active = False
+                explosions.append(Explosion(bird.x, bird.y))
+
+                fire_active = True
+                fire_x, fire_y = jet1_x, jet1_y
+            elif bird.check_collision(jet2_x, jet2_y):
+                bird.active = False
+                jet2_health -= 50
+                if jet2_health <= 0:
+                    jet2_active = False
+                explosions.append(Explosion(bird.x, bird.y))
+                fire_active = True
+                fire_x, fire_y = jet2_x, jet2_y
+            for i in projectiles:
+                if i.check_collision(bird.x, bird.y):
+                    bird.active=False
+                    explosions.append(Explosion(bird.x, bird.y))    
+            
+            if not bird.active:
+                birds.remove(bird)
+        if jet1_active==False or jet2_active==False:
+            if jet1_active==False:
+                winner="Player 2"
+            else:
+                winner="Player 1"
+            GAME_STATE="Game Over"
+        # Randomly spawn birds
+        if random.random() < 0.01:  # Adjust spawn probability
+            spawn_bird()
+        if len(powerup)==0:
+            val= random.choice(["health","speed","projectile"])
+            color=(1,0,0)
+            if val=="health":
+                color=(0,1,0)
+            if val=="speed":
+                color=(0,0,1)
+            if val=="projectile":
+                color=(1,0,1)
+            powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),color, val))
+            # powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),(1,0,0)))
+            # powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),(1,0,0)))
+        if current_time-poweruptimer>10:
+            # powerup.append(powerups(random.randint(0,SCREEN_WIDTH),random.randint(0,SCREEN_HEIGHT),(1,0,0)))
+            powerup=[]
+            poweruptimer=current_time
+        if len(powerup)!=0:
+            # print(jet1_health,jet2_health)
+            for i in powerup:
+                if i.type=="health":
+                    if i.check_collision(jet1_x, jet1_y):
+                        # jet1_color = i.color
+                        jet1_color_timer = current_time 
+                        jet1_health+=25
+                        print(f"Jet1 collected speed power-up. New color: {jet1_color}")
+                        if jet1_health>100:
+                            jet1_health=100
+                    if i.check_collision(jet2_x, jet2_y):
+                        # jet2_color = i.color
+                        jet2_color_timer = current_time 
+                        jet2_health+=25
+                        print(f"Jet2 collected speed power-up. New color: {jet2_color}")
+                        if jet2_health>100:
+                            jet2_health=100
+                elif i.type=="speed":
+                    if i.check_collision(jet1_x, jet1_y):
+                        JET1_SPEED+=20
+                        jet1_color = i.color  # Change color to power-up color
+                        jet1_color_timer = current_time
+                        print(f"Jet1 collected speed power-up. New color: {jet1_color}")
+                    elif i.check_collision(jet2_x, jet2_y):
+                        JET2_SPEED+=20
+                        jet2_color = i.color
+                        jet2_color_timer = current_time  
+                        print(f"Jet2 collected speed power-up. New color: {jet2_color}")                  
+                elif i.type=="projectile":
+                    if i.check_collision(jet1_x, jet1_y):
+                        PROJECTILE1_SPEED+=30
+                        jet1_color = i.color
+                        jet1_color_timer = current_time
+                        print(f"Jet1 collected speed power-up. New color: {jet1_color}")
+                    elif i.check_collision(jet2_x, jet2_y):
+                        PROJECTILE2_SPEED+=30
+                        jet2_color = i.color
+                        jet2_color_timer = current_time
+                        print(f"Jet2 collected speed power-up. New color: {jet2_color}")
+            dt=current_time-last_time
+            for explosion in explosions:
+                explosion.update(dt)    
         # print(jet1_health,jet2_health)
-        for i in powerup:
-            if i.type=="health":
-                if i.check_collision(jet1_x, jet1_y):
-                    
-                    jet1_health+=25
-                    if jet1_health>100:
-                        jet1_health=100
-                if i.check_collision(jet2_x, jet2_y):
-                    jet2_health+=25
-                    if jet2_health>100:
-                        jet2_health=100
-            if i.type=="speed":
-                if i.check_collision(jet1_x, jet1_y):
-                    JET1_SPEED+=5
-                if i.check_collision(jet2_x, jet2_y):
-                    JET2_SPEED+=5
-            if i.type=="projectile":
-                if i.check_collision(jet1_x, jet1_y):
-                    PROJECTILE1_SPEED+=10
-                if i.check_collision(jet2_x, jet2_y):
-                    PROJECTILE2_SPEED+=10
-        dt=current_time-last_time
-        for explosion in explosions:
-            explosion.update(dt)    
-        # print(jet1_health,jet2_health)
+    else:
+        if keys.get(b'p'):
+            GAME_STATE="Main Game"
+            last_time=current_time
+            print("Game Resumed")
+    # Revert colors after 10 seconds
+    #current_time = time.time()
+    if current_time - jet1_color_timer >= 10:
+        jet1_color = (1, 1, 0)  # Default yellow color
+        JET1_SPEED=defaultspd
+        PROJECTILE1_SPEED=defaultprojspd
+    if current_time - jet2_color_timer >= 10:
+        jet2_color = (1, 1, 0)  # Default yellow color
+        JET2_SPEED=defaultspd
+        PROJECTILE2_SPEED=defaultprojspd
+
     glutPostRedisplay()
 def process_points(data, precision=1):
     processed_data = []
@@ -779,11 +822,12 @@ def display():
                 birds=[]
                 birdie=False
             
-            # Draw Jets if active
+            # Draw Jets if active 
             if jet1_active:
-                draw_jet(jet1_x, jet1_y, (1, 0, 0), direction=1)  # Player 1 Jet
+                draw_jet(jet1_x, jet1_y, jet1_color, direction=1)  # Player 1 Jet
             if jet2_active:
-                draw_jet(jet2_x, jet2_y, (0, 0, 1), direction=-1)  # Player 2 Jet
+                draw_jet(jet2_x, jet2_y, jet2_color, direction=-1)  # Player 2 Jet
+
 
             # Draw the outer unfilled rectangle
             val1=jet1_health
@@ -865,25 +909,30 @@ def display():
 # import time
 
 def key_pressed(key, x, y):
-    global jet1_active, jet2_active, last_time_jet1, last_time_jet2, projectiles
+    global jet1_active, jet2_active, last_time_jet1, last_time_jet2, projectiles, GAME_STATE
 
     keys[key] = True
     current_time = time.time()
-    
-    # Delay for Jet1 (Player 1)
-    if key == b'f' and jet1_active:
-        if current_time - last_time_jet1 >= 0.5:  # Check if 1 second has passed
-            projectile = Projectile(jet1_x + 35, jet1_y, 1, (1, 0, 0))  # Red projectile
-            projectiles.append(projectile)
-            last_time_jet1 = current_time  # Update the last fired time
+    if GAME_STATE=="Main Game":
+        # Delay for Jet1 (Player 1)
+        if key == b'f' and jet1_active:
+            if current_time - last_time_jet1 >= 0.5:  # Check if 1 second has passed
+                projectile = Projectile(jet1_x + 35, jet1_y, 1, (1, 0, 0))  # Red projectile
+                projectiles.append(projectile)
+                last_time_jet1 = current_time  # Update the last fired time
 
-    # Delay for Jet2 (Player 2)
-    elif key == b' ' and jet2_active:
-        if current_time - last_time_jet2 >= 0.5:  # Check if 1 second has passed
-            projectile = Projectile(jet2_x - 35, jet2_y, -1, (0, 0, 1))  # Blue projectile
-            projectiles.append(projectile)
-            last_time_jet2 = current_time  # Update the last fired time
-
+        # Delay for Jet2 (Player 2)
+        elif key == b' ' and jet2_active:
+            if current_time - last_time_jet2 >= 0.5:  # Check if 1 second has passed
+                projectile = Projectile(jet2_x - 35, jet2_y, -1, (0, 0, 1))  # Blue projectile
+                projectiles.append(projectile)
+                last_time_jet2 = current_time  # Update the last fired time
+    if key== b'p' and GAME_STATE=="Main Game":
+        GAME_STATE="Pause"
+        print("Game Paused")
+    elif key== b'p' :
+        GAME_STATE="Main Game"
+        print("Game Resumed")
 def key_released(key, x, y):
     keys[key] = False
 
