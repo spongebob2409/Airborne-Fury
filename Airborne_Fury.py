@@ -60,7 +60,7 @@ class Projectile:
         self.active = True
 
     def move(self):
-        # """Move the projectile in the specified direction."""
+       
         if self.direction == 1:
 
             self.x += PROJECTILE1_SPEED * self.direction
@@ -79,13 +79,11 @@ class Projectile:
             glEnd()
 
     def check_collision(self, jet_x, jet_y):
-        # """Check if the projectile hits a jet."""
         if self.active and abs(self.x - jet_x) < 20 and abs(self.y - jet_y) < 20:
             print(f"Collision detected at ({self.x}, {self.y}) with jet at ({jet_x}, {jet_y})")
             self.active = False
             return True
         return False
-# List to hold projectiles
 projectiles = []
 class powerups:
     def __init__(  self, x, y, color, type):
@@ -128,7 +126,6 @@ class lightning:
             glColor3f(self.color[0], self.color[1], self.color[2])
             draw_line(self.x, self.y, self.x + (20 * self.direction), self.y)
     def check_collision(self, jet_x, jet_y):
-        # """Check if the projectile hits a jet."""
         if self.active and abs(self.x - jet_x) < 20 and abs(self.y - jet_y) < 20:
             self.active = False
             return True
@@ -149,7 +146,6 @@ class Bird:
             self.active = False
     
     def draw(self):
-        """Render the bird as a custom shape resembling the uploaded image."""
         
         if not self.active:
             return
@@ -163,16 +159,16 @@ class Bird:
 
 # First triangle
         draw_filled_triangle(
-            int(0), int(0),                             # Vertex 1
-            int(-self.size), int(-self.size * 0.5),     # Vertex 2
-            int(0), int(-self.size)                     # Vertex 3
+            int(0), int(0),                             
+            int(-self.size), int(-self.size * 0.5),     
+            int(0), int(-self.size)                     
         )
 
         # Second triangle
         draw_filled_triangle(
-            int(0), int(0),                             # Vertex 1
-            int(0), int(-self.size),                    # Vertex 2
-            int(self.size * 0.8), int(-self.size * 0.5) # Vertex 3
+            int(0), int(0),                             
+            int(0), int(-self.size),                    
+            int(self.size * 0.8), int(-self.size * 0.5) 
         )
 
 
@@ -200,7 +196,6 @@ class Bird:
         """Update bird position."""
         self.x += self.speed_x
         self.y += self.speed_y
-        # Wrap-around logic to ensure birds reappear from the other side
         if self.x > SCREEN_WIDTH + self.size:
             self.x = -self.size
         elif self.x < -self.size:
@@ -212,7 +207,6 @@ class Bird:
             self.y = SCREEN_HEIGHT + self.size
 
     def check_collision(self, jet_x, jet_y):
-        """Check if the bird collides with the jet."""
         return self.active and (self.x - jet_x)**2 + (self.y - jet_y)**2 <= self.size**2
 birds = [
     Bird(
@@ -228,7 +222,6 @@ fire_active = False
 fire_x = 0
 fire_y = 0
 def draw_filled_rectangle(x_min, y_min, x_max, y_max):
-    """Draw a filled rectangle by filling it with horizontal lines."""
     for y in range(y_min, y_max + 1):
         draw_line(x_min, y, x_max, y)
 
@@ -244,7 +237,6 @@ def spawn_bird():
     y = random.randint(0, SCREEN_HEIGHT)
     birds.append(Bird(x, y, size, speed, random.uniform(-1, 1)))
 def draw_fire(x, y):
-    """Draw a fire effect at the given position."""
     glColor3f(1.0, 0.0, 0.0)  # Red color
     glBegin(GL_TRIANGLES)
     glVertex2f(x, y)
@@ -259,13 +251,11 @@ def draw_fire(x, y):
     glVertex2f(x + 5, y - 25)
     glEnd()
 def draw_circle(x, y, radius):
-    # """Draw a filled circle using the midpoint circle algorithm."""
     glBegin(GL_POINTS)
     p = 1 - radius
     xc, yc = 0, int(radius)  # Cast yc to an integer
     
     while xc <= yc:
-        # Draw horizontal lines across the circle for filling
         for i in range(-yc, yc + 1):
             glVertex2f(x + xc, y + i)
             glVertex2f(x - xc, y + i)
@@ -291,7 +281,7 @@ class Explosion:
         self.create_particles()
 
     def create_particles(self):
-        for _ in range(50):  # Number of particles
+        for _ in range(50):  
             particle = {
                 'x': self.x,
                 'y': self.y,
@@ -315,40 +305,21 @@ class Explosion:
             # glColor3f(1, 0.2, 0)  # Orange color for explosion
             draw_circle(int(particle['x']-random.choice([3,1,2,4])), int(particle['y']-random.choice([3,1,2,4])), random.choice([1,2,3,4]))
 def check_collision(projectile, jet):
-    # Simple collision detection logic
+   
     return (projectile.x > jet.x and projectile.x < jet.x + jet.width and
             projectile.y > jet.y and projectile.y < jet.y + jet.height)
 
 explosions = []
-def draw():
-    # Existing draw code...
-    for explosion in explosions:
-        explosion.draw()
-def update(dt):
-    # Existing update code...
-    for explosion in explosions:
-        explosion.update(dt)
+
 def draw_circle1(x, y, radius, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT):
-    # """
-    # Draw a filled circle using the midpoint circle algorithm.
-
-    # Args:
-    # x (int): x-coordinate of the circle's center.
-    # y (int): y-coordinate of the circle's center.
-    # radius (int): Radius of the circle.
-    # screen_width (int): Width of the screen.
-    # screen_height (int): Height of the screen.
-
-    # Returns:
-    # list: A list of points to be drawn for the filled circle.
-    # """
-    radius = int(radius)  # Ensure radius is an integer
+    
+    radius = int(radius)  
     p = 1 - radius
     xc, yc = 0, radius
     points = []
 
     while xc <= yc:
-        # Draw horizontal lines across the circle for filling
+        
         for i in range(-yc, yc + 1):
             if 0 <= x + xc < screen_width and 0 <= y + i < screen_height:
                 points.append((x + xc, y + i))
@@ -361,7 +332,7 @@ def draw_circle1(x, y, radius, screen_width=SCREEN_WIDTH, screen_height=SCREEN_H
             if 0 <= x - yc < screen_width and 0 <= y + i < screen_height:
                 points.append((x - yc, y + i))
 
-        # Update decision parameter and points
+        
         xc += 1
         if p < 0:
             p += 2 * xc + 1
@@ -382,14 +353,7 @@ def draw_rectengle(x1, y1, x2, y2):
     glEnd()
 
 def draw_line(x1, y1, x2, y2, width=1):
-    """
-    Draw a line using the midpoint line algorithm with adjustable width.
-    
-    Parameters:
-        x1, y1: Start point of the line.
-        x2, y2: End point of the line.
-        width: Width of the line (default is 1 pixel).
-    """
+   
     glBegin(GL_POINTS)
     dx = abs(x2 - x1)
     dy = abs(y2 - y1)
@@ -400,12 +364,11 @@ def draw_line(x1, y1, x2, y2, width=1):
     half_width = width // 2  # Determine the range for width adjustment
     
     while True:
-        # Draw multiple points around the main line for the width
         for w in range(-half_width, half_width + 1):
             if dx > dy:
-                glVertex2f(x1, y1 + w)  # Adjust perpendicular to the x-axis
+                glVertex2f(x1, y1 + w) 
             else:
-                glVertex2f(x1 + w, y1)  # Adjust perpendicular to the y-axis
+                glVertex2f(x1 + w, y1)  
         
         if x1 == x2 and y1 == y2:
             break
@@ -419,71 +382,44 @@ def draw_line(x1, y1, x2, y2, width=1):
     glEnd()
 
 def draw_triangle(x1, y1, x2, y2, x3, y3):
-    """
-    Draw a triangle using the draw_line function.
-
-    Parameters:
-        x1, y1: Coordinates of the first vertex.
-        x2, y2: Coordinates of the second vertex.
-        x3, y3: Coordinates of the third vertex.
-    """
-    # Draw the edges of the triangle
-    draw_line(x1, y1, x2, y2)  # Line from vertex 1 to vertex 2
-    draw_line(x2, y2, x3, y3)  # Line from vertex 2 to vertex 3
-    draw_line(x3, y3, x1, y1)  # Line from vertex 3 to vertex 1
+   
+    draw_line(x1, y1, x2, y2) 
+    draw_line(x2, y2, x3, y3) 
+    draw_line(x3, y3, x1, y1)  
 def draw_filled_triangle(x1, y1, x2, y2, x3, y3):
-    """
-    Draw a filled triangle using a scanline approach.
-
-    Parameters:
-        x1, y1: Coordinates of the first vertex.
-        x2, y2: Coordinates of the second vertex.
-        x3, y3: Coordinates of the third vertex.
-    """
-    # Sort the vertices by y-coordinate (y1 <= y2 <= y3)
+   
+   
     vertices = sorted([(x1, y1), (x2, y2), (x3, y3)], key=lambda v: v[1])
     x1, y1 = vertices[0]
     x2, y2 = vertices[1]
     x3, y3 = vertices[2]
 
     def interpolate(y, y0, x0, y1, x1):
-        """Linear interpolation for x based on y."""
+        
         if y1 == y0:
-            return x0  # Avoid division by zero
+            return x0  
         return x0 + (x1 - x0) * (y - y0) / (y1 - y0)
 
     glBegin(GL_POINTS)
     for y in range(y1, y3 + 1):
         if y < y2:
-            # Interpolate x values for the lower part of the triangle
+           
             xa = interpolate(y, y1, x1, y2, x2)
             xb = interpolate(y, y1, x1, y3, x3)
         else:
-            # Interpolate x values for the upper part of the triangle
+           
             xa = interpolate(y, y2, x2, y3, x3)
             xb = interpolate(y, y1, x1, y3, x3)
 
-        # Ensure xa is the left-most point
         if xa > xb:
             xa, xb = xb, xa
 
-        # Draw a horizontal line between xa and xb
         for x in range(int(xa), int(xb) + 1):
             glVertex2f(x, y)
     glEnd()
 
 
-# Handle button actions
-def handle_button_action(action):
-    if action == "play":
-        print("Play button pressed")
-        # Resume game logic
-    elif action == "pause":
-        print("Pause button pressed")
-        #display_message("PAUSE")
-    elif action == "exit":
-        print("Exit button pressed")
-        sys.exit(0)
+
 
 # # Display message on screen
 # def display_message(message):
@@ -494,26 +430,19 @@ def handle_button_action(action):
 
 def draw_cloud(x, y, size):
     global cloudarr
-    # """Draw a cartoon-style cloud using overlapping circles."""
-    glColor3f(1.0, 1.0, 1.0)  # Pure white color for the cloud
-    
-    # Draw three main circles for cloud body
+    glColor3f(1.0, 1.0, 1.0) 
     
     arr1=draw_circle1(x - size * 0.6, y - size * 0.3, size * 0.8)  # Left circle
     arr2=draw_circle1(x + size * 0.6, y - size * 0.3, size * 0.8)  # Right circle
     
-    # Add gradient effect with a lighter shade
-    glColor3f(0.9, 0.9, 1.0)  # Slightly lighter for gradient
+    glColor3f(0.9, 0.9, 1.0) 
     arr3=draw_circle1(x, y + size * 0.2, size * 0.6)  # Top highlight
     cloudarr.append(arr1)
     cloudarr.append(arr2)
     cloudarr.append(arr3)
 
 def draw_jet(x, y, color, direction=1):
-    # """
-    # Draw a jet with body and triangular nose.
-    # direction: 1 for right-facing, -1 for left-facing
-    # """
+   
     glColor3f(*color)  # Yellow Jet Body
     draw_line(x, y, x + (20 * direction), y)  # Body Line
 
@@ -914,14 +843,13 @@ def key_pressed(key, x, y):
     keys[key] = True
     current_time = time.time()
     if GAME_STATE=="Main Game":
-        # Delay for Jet1 (Player 1)
+       
         if key == b'f' and jet1_active:
             if current_time - last_time_jet1 >= 0.5:  # Check if 1 second has passed
                 projectile = Projectile(jet1_x + 35, jet1_y, 1, (1, 0, 0))  # Red projectile
                 projectiles.append(projectile)
                 last_time_jet1 = current_time  # Update the last fired time
 
-        # Delay for Jet2 (Player 2)
         elif key == b' ' and jet2_active:
             if current_time - last_time_jet2 >= 0.5:  # Check if 1 second has passed
                 projectile = Projectile(jet2_x - 35, jet2_y, -1, (0, 0, 1))  # Blue projectile
@@ -937,13 +865,12 @@ def key_released(key, x, y):
     keys[key] = False
 
 def init():
-    # """Initialize OpenGL settings."""
     glClearColor(0.5, 0.8, 1.0, 1.0)  # sky blue background
     glMatrixMode(GL_PROJECTION)
-    gluOrtho2D(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT)  # Set 2D coordinate system
+    gluOrtho2D(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT)  
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
-    glPointSize(5.0)  # Slightly larger points for visibility
+    glPointSize(5.0)  
 
 def main():
     
