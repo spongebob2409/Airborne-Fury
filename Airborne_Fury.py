@@ -303,7 +303,9 @@ class Explosion:
     def draw(self):
         glColor3f(1, 0.5, 0)  # Orange color for explosion
         for particle in self.particles:
-            draw_filled_rectangle(particle['x'], particle['y'], particle['x'] + 2, particle['y'] + 2)
+            # draw_filled_rectangle(int(particle['x']), int(particle['y']), int(particle['x'] + 2), int(particle['y'] + 2))
+            # glColor3f(1, 0.2, 0)  # Orange color for explosion
+            draw_circle(int(particle['x']-random.choice([3,1,2,4])), int(particle['y']-random.choice([3,1,2,4])), random.choice([1,2,3,4]))
 def check_collision(projectile, jet):
     # Simple collision detection logic
     return (projectile.x > jet.x and projectile.x < jet.x + jet.width and
@@ -584,6 +586,7 @@ def update_positions():
         projectile.move()
         if jet1_active and projectile.check_collision(jet1_x, jet1_y):
             jet1_health -= 30
+            explosions.append(Explosion(jet1_x, jet1_y))
             if jet1_health <= 0:
                 jet1_active = False
             # jet1_active = False
@@ -591,6 +594,7 @@ def update_positions():
             jet2_health -= 30
             if jet2_health <= 0:
                 jet2_active = False
+            explosions.append(Explosion(jet2_x, jet2_y))
         if not projectile.active:
             projectiles.remove(projectile)
     
@@ -601,6 +605,7 @@ def update_positions():
             jet1_health -= 50
             if jet1_health <= 0:
                 jet1_active = False
+            explosions.append(Explosion(bird.x, bird.y))
 
             fire_active = True
             fire_x, fire_y = jet1_x, jet1_y
@@ -609,6 +614,7 @@ def update_positions():
             jet2_health -= 50
             if jet2_health <= 0:
                 jet2_active = False
+            explosions.append(Explosion(bird.x, bird.y))
             fire_active = True
             fire_x, fire_y = jet2_x, jet2_y
         for i in projectiles:
@@ -663,10 +669,12 @@ def update_positions():
                     JET2_SPEED+=5
             if i.type=="projectile":
                 if i.check_collision(jet1_x, jet1_y):
-                    PROJECTILE1_SPEED+=5
+                    PROJECTILE1_SPEED+=10
                 if i.check_collision(jet2_x, jet2_y):
-                    PROJECTILE2_SPEED+=5
-            
+                    PROJECTILE2_SPEED+=10
+        dt=current_time-last_time
+        for explosion in explosions:
+            explosion.update(dt)    
         # print(jet1_health,jet2_health)
     glutPostRedisplay()
 def process_points(data, precision=1):
@@ -842,7 +850,8 @@ def display():
             draw_text(SCREEN_WIDTH // 2 -60 , SCREEN_HEIGHT // 2- 130, "Play Again", font=GLUT_BITMAP_TIMES_ROMAN_24)
         for bird in birds:
                 bird.draw()
-                
+        for i in explosions:
+            i.draw()        
         glutSwapBuffers()
 # def key_pressed(key, x, y):
 #     global jet1_active, jet2_active, last_time
