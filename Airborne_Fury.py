@@ -13,6 +13,7 @@ last_time = time.time()
 last_time_jet1 = 0
 last_time_jet2 = 0
 poweruptimer=0
+winner=""
 # Screen dimensions
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
@@ -26,10 +27,10 @@ jet1_x, jet1_y = 200, 300
 jet2_x, jet2_y = 600, 300
 
 # Movement speed
-JET1_SPEED = 5
-PROJECTILE1_SPEED = 25  # Speed for projectiles
+JET1_SPEED = 10
+PROJECTILE1_SPEED = 30  # Speed for projectiles
 JET2_SPEED = 10
-PROJECTILE2_SPEED = 50  # Speed for projectiles
+PROJECTILE2_SPEED = 30  # Speed for projectiles
 
 # Key states
 keys = {}
@@ -84,12 +85,21 @@ class powerups:
         self.y = y
         self.color = color
         self.active = True
-        self.radius = 10
+        self.radius = 15
         self.type=type
     def draw(self):
         if self.active:
             glColor3f(self.color[0], self.color[1], self.color[2])
             draw_circle(self.x, self.y, self.radius)
+            if self.type=="health":
+                glColor3f(1,1,1)
+                draw_text(self.x-10,self.y-8,"+", font=GLUT_BITMAP_TIMES_ROMAN_24)
+            elif self.type=="speed":
+                glColor3f(1,1,1)
+                draw_text(self.x-10,self.y-8,">>", font=GLUT_BITMAP_TIMES_ROMAN_24)
+            elif self.type=="projectile":
+                glColor3f(1,1,1)
+                draw_text(self.x-10,self.y-8,"=>", font=GLUT_BITMAP_TIMES_ROMAN_24)
     def check_collision(self, jet_x, jet_y):
         # """Check if the projectile hits a jet."""
         if self.active and abs(self.x - jet_x) < 20 and abs(self.y - jet_y) < 20:
@@ -264,6 +274,50 @@ def draw_circle(x, y, radius):
             p += 2 * (xc - yc) + 1
     
     glEnd()
+
+class Explosion:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.particles = []
+        self.create_particles()
+
+    def create_particles(self):
+        for _ in range(50):  # Number of particles
+            particle = {
+                'x': self.x,
+                'y': self.y,
+                'dx': random.uniform(-1, 1),
+                'dy': random.uniform(-1, 1),
+                'life': random.uniform(0.5, 1.5)
+            }
+            self.particles.append(particle)
+
+    def update(self, dt):
+        for particle in self.particles:
+            particle['x'] += particle['dx'] * dt
+            particle['y'] += particle['dy'] * dt
+            particle['life'] -= dt
+        self.particles = [p for p in self.particles if p['life'] > 0]
+
+    def draw(self):
+        glColor3f(1, 0.5, 0)  # Orange color for explosion
+        for particle in self.particles:
+            draw_filled_rectangle(particle['x'], particle['y'], particle['x'] + 2, particle['y'] + 2)
+def check_collision(projectile, jet):
+    # Simple collision detection logic
+    return (projectile.x > jet.x and projectile.x < jet.x + jet.width and
+            projectile.y > jet.y and projectile.y < jet.y + jet.height)
+
+explosions = []
+def draw():
+    # Existing draw code...
+    for explosion in explosions:
+        explosion.draw()
+def update(dt):
+    # Existing update code...
+    for explosion in explosions:
+        explosion.update(dt)
 def draw_circle1(x, y, radius, screen_width=SCREEN_WIDTH, screen_height=SCREEN_HEIGHT):
     # """
     # Draw a filled circle using the midpoint circle algorithm.
@@ -465,22 +519,44 @@ def draw_jet(x, y, color, direction=1):
     draw_line(x + (10 * direction), y - 5, x, y - 15)  # Bottom Wing (Middle Part)
 
 def mouse_click(button, state, x, y):
-    global GAME_STATE
+    global GAME_STATE, jet1_active, jet2_active, jet1_health, jet2_health, jet1_x, jet1_y, jet2_x, jet2_y, projectiles, birds, fire_active, fire_x, fire_y, winner, powerup, poweruptimer, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED
     y=SCREEN_HEIGHT-y
     if state == GLUT_DOWN:  # Mouse button pressed
         if button == GLUT_LEFT_BUTTON:
-            if x>250 and x<550 and y>250 and y<350:
+            if x>250 and x<550 and y>250 and y<350 and GAME_STATE=="Main Menu":
                 GAME_STATE="Main Game"
+            if x>250 and x<550 and y>150 and y<200 and GAME_STATE=="Game Over":
+                GAME_STATE="Main Game"
+                jet1_active = True
+                jet2_active = True
+                jet1_health = 100
+                jet2_health = 100
+                jet1_x, jet1_y = 200, 300
+                jet2_x, jet2_y = 600, 300
+                projectiles = []
+
+                birds = []
+                fire_active = False
+                fire_x = 0
+                fire_y = 0
+                winner=""
+                powerup=[]
+                poweruptimer=0
+                JET2_SPEED = 10
+                JET1_SPEED = 10
+                PROJECTILE1_SPEED = 30  # Speed for projectiles
+                PROJECTILE2_SPEED = 30  # Speed for projectiles
                 
             print(x,y)
             print(f"Left button clicked at ({x}, {y})")
+
         elif button == GLUT_RIGHT_BUTTON:
             print(f"Right button clicked at ({x}, {y})")
         elif button == GLUT_MIDDLE_BUTTON:
             print(f"Middle button clicked at ({x}, {y})")
 def update_positions():
     # """Update jet positions and check for collisions."""
-    global jet1_x, jet1_y, jet2_x, jet2_y, jet1_active, jet2_active, jet1_health, jet2_health, last_time, poweruptimer, powerup, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED
+    global jet1_x, jet1_y, jet2_x, jet2_y, jet1_active, jet2_active, jet1_health, jet2_health, last_time, poweruptimer, powerup, JET2_SPEED, JET1_SPEED, PROJECTILE1_SPEED, PROJECTILE2_SPEED, GAME_STATE, winner
     current_time = time.time()
     # Update positions of active jets
     if jet1_active:
@@ -538,9 +614,16 @@ def update_positions():
         for i in projectiles:
             if i.check_collision(bird.x, bird.y):
                 bird.active=False
+                explosions.append(Explosion(bird.x, bird.y))    
+        
         if not bird.active:
             birds.remove(bird)
-
+    if jet1_active==False or jet2_active==False:
+        if jet1_active==False:
+            winner="Player 2"
+        else:
+            winner="Player 1"
+        GAME_STATE="Game Over"
     # Randomly spawn birds
     if random.random() < 0.01:  # Adjust spawn probability
         spawn_bird()
@@ -659,6 +742,8 @@ def display():
             glColor3f(1.0, 0.6, 0.5)
             draw_filled_rectangle(250, 250, 550, 350)
             glColor3f(1.0, 1.0, 1.0)
+            draw_rectengle(250, 250, 550, 350)
+            glColor3f(1.0, 1.0, 1.0)
             draw_text(SCREEN_WIDTH // 2 -70 , SCREEN_HEIGHT // 2- 10, "Let's FLY!!!!!", font=GLUT_BITMAP_TIMES_ROMAN_24)
         elif GAME_STATE=="Main Game":    
             deff=0   
@@ -710,7 +795,7 @@ def display():
 
 
             draw_filled_rectangle(555, 555, 545+val2, 575)
-
+            
            
 
             # Draw the inner filled rectangle
@@ -721,7 +806,40 @@ def display():
                 projectile.draw()
             for i in powerup:
                 i.draw()
-        
+        elif GAME_STATE=="Game Over":
+            deff=0   
+            for i in cloudarr:
+                    if deff==0:
+                        
+                        glBegin(GL_POINTS)
+                        glColor3f(0.9, 0.9, 1.0)
+                        for j in i:
+                            glVertex2f(j[0],j[1])
+                        deff+=1
+                        glEnd() 
+                        
+                    else:
+                        glBegin(GL_POINTS)
+                        glColor3f(1.0, 1.0, 1.0)
+                        for j in i:
+                            glVertex2f(j[0],j[1])
+                        if deff==2:
+                            deff=0
+                        else:
+                            deff+=1
+                        glEnd() 
+            glColor3f(1.0, 0.6, 0.5)
+            draw_filled_rectangle(250, 250, 550, 350)
+            glColor3f(1.0, 1.0, 1.0)
+            draw_text(SCREEN_WIDTH // 2 -70 , SCREEN_HEIGHT // 2- 0, "Game Over", font=GLUT_BITMAP_TIMES_ROMAN_24)
+            draw_text(SCREEN_WIDTH // 2 -70 , SCREEN_HEIGHT // 2- 20, f"{winner} Wins", font=GLUT_BITMAP_TIMES_ROMAN_24)
+            
+            glColor3f(1.0, 0.6, 0.5)
+            draw_filled_rectangle(250, 150, 550, 200)
+            glColor3f(1.0, 1.0, 1.0)
+            draw_rectengle(250, 150, 550, 200)
+            glColor3f(1.0, 1.0, 1.0)
+            draw_text(SCREEN_WIDTH // 2 -60 , SCREEN_HEIGHT // 2- 130, "Play Again", font=GLUT_BITMAP_TIMES_ROMAN_24)
         for bird in birds:
                 bird.draw()
                 
